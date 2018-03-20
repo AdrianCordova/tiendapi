@@ -220,18 +220,25 @@ function deleteProductoPedido(req, res, next) {
   var prodID = parseInt(req.params.idProd);
   var usrID = parseInt(req.params.usuario);
   var importe;
-  getEntrada(pedID, prodID).then(function(entrada){
-    importe = entrada.importe;
-  });
-  db.none('delete from entradas where pedidos_id = $1 and productos_id = $2', [pedID, prodID])
-    .then(function(){
-      updateTotalesPedido(pedID, importe, -1).then(function(){
-        pedidoUsuario(usrID, pedID, res);
-      });
-    })
-    .catch(function(err){
-      return next(err);
-    });
+
+  db.one('select 1 from pedidos where pedido_id = $1 and usuario_id = $2', [pedID, usrID])
+        .then(function(){
+          getEntrada(pedID, prodID).then(function(entrada){
+            importe = entrada.importe;
+          });
+          db.none('delete from entradas where pedidos_id = $1 and productos_id = $2', [pedID, prodID])
+            .then(function(){
+              updateTotalesPedido(pedID, importe, -1).then(function(){
+                pedidoUsuario(usrID, pedID, res);
+              });
+            })
+            .catch(function(err){
+              return next(err);
+            });
+        })
+        .catch(function(err){
+          return res.status(422).json('Ese pedido no pertenece a ese usuario');
+        });   
 }
 
 // devuelve los datos actualizados de los pedidos -> entrada -> productos
