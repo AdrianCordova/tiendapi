@@ -19,6 +19,7 @@ router.delete('/api/productos/:id', db.removeProducto);
 router.get('/api/:usuario/pedidos', db.getPedidosUsuario);
 router.get('/api/:usuario/pedidos/:id', db.getPedidoUsuario);
 router.post('/api/:usuario/pedidos', db.createPedidoUsuario);
+router.delete('/api/:usuario/pedidos/:id', db.removePedidoUsuario);
 router.post('/api/:usuario/:pedido/addProd/:canti/:idProd', db.createProductoPedido);
 router.delete('/api/:usuario/:pedido/deleteProd/:idProd', db.deleteProductoPedido);
 

@@ -25,6 +25,7 @@ module.exports = {
   getPedidosUsuario: getPedidosUsuario,
   getPedidoUsuario: getPedidoUsuario,
   createPedidoUsuario: createPedidoUsuario,
+  removePedidoUsuario: removePedidoUsuario,
   createProductoPedido: createProductoPedido,
   deleteProductoPedido: deleteProductoPedido
 };
@@ -154,6 +155,18 @@ function createPedidoUsuario(req, res, next) {
   });
 }
 
+function removePedidoUsuario(req, res, next) {
+  var pedID = parseInt(req.params.id);
+  var usrID = parseInt(req.params.usuario);
+  db.one('delete from pedidos where pedido_id = $1 and usuario_id = $2 returning *', [pedID, usrID])
+    .then(function (data) {
+      res.status(200).json(data);
+    })
+    .catch(function (err) {
+      return next(err);
+    });
+}
+
 function getPedidosUsuario(req, res, next) {
   var usrID = parseInt(req.params.usuario);
   db.any('select * from pedidos where usuario_id = $1', usrID)
@@ -179,17 +192,23 @@ function createProductoPedido(req, res, next) {
   
   db.one('select * from productos where producto_id = $1', prodID)
     .then(function(p){
-      var importe = parseFloat(p.precio)*canti;
-      db.none('insert into entradas(pedidos_id, productos_id, canti, importe) ' +
-        'values($1, $2, $3, $4)', [pedID, prodID, canti, importe])
+      db.one('select 1 from pedidos where pedido_id = $1 and usuario_id = $2', [pedID, usrID])
         .then(function(){
-            updateTotalesPedido(pedID, importe, 1).then(function(){
-              pedidoUsuario(usrID, pedID, res);
+          var importe = parseFloat(p.precio)*canti;
+          db.none('insert into entradas(pedidos_id, productos_id, canti, importe) ' +
+            'values($1, $2, $3, $4)', [pedID, prodID, canti, importe])
+            .then(function(){
+                updateTotalesPedido(pedID, importe, 1).then(function(){
+                  pedidoUsuario(usrID, pedID, res);
+                });
+            })
+            .catch(function(err){
+              return next(err);
             });
         })
         .catch(function(err){
-          return next(err);
-        });
+          return res.status(422).json('Ese pedido no pertenece a ese usuario');
+        });  
     })
     .catch(function(err){
       return next(err);
@@ -215,6 +234,7 @@ function deleteProductoPedido(req, res, next) {
     });
 }
 
+// devuelve los datos actualizados de los pedidos -> entrada -> productos
 function pedidoUsuario(usuario, pedido, res){
   db.any('select * from pedidos where usuario_id = $1 and pedido_id = $2', [usuario, pedido])
     .then(function (p){
